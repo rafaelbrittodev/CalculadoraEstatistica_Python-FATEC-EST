@@ -2,24 +2,158 @@
 import os
 import pandas as pd
 import matplotlib.pyplot as plt
+import datetime
 
-# Função para adicionar um novo erro ao DataFrame
+# Funções
+
+
+def escolher_caminho_banco_de_dados():
+    # Solicita ao usuário o caminho do banco de dados
+    caminho_banco_de_dados = input("Digite o caminho do banco de dados: ")
+
+    # Verifica se o caminho é válido
+    if not os.path.exists(caminho_banco_de_dados):
+        print("Caminho inválido. Digite novamente.")
+        return escolher_caminho_banco_de_dados()
+
+    # Verifica se o arquivo é um arquivo Excel
+    if not caminho_banco_de_dados.endswith(".xlsx"):
+        print("Arquivo inválido. O arquivo deve ser um arquivo Excel.")
+        return escolher_caminho_banco_de_dados()
+
+    return caminho_banco_de_dados
+
+
 def adicionar_erro(df):
     erro = input("Digite o nome do novo erro: ")
-    quantidade = int(input("Digite a quantidade desse erro: "))
-    
+    quantidade = input("Digite a quantidade desse erro: ")
+
+    # Tenta converter a quantidade para um int
+    try:
+        quantidade = int(quantidade)
+    except ValueError:
+        # Se a conversão falhar, imprime uma mensagem de erro
+        print("Quantidade inválida. Digite um número inteiro.")
+        return adicionar_erro(df)
+
     # Adiciona o erro à lista de novas linhas
     novas_linhas = []
     for _ in range(quantidade):
         nova_linha = {'Erro': erro, 'Quantidade': 1}
         novas_linhas.append(nova_linha)
-    
+
     # Concatena a lista de novas linhas ao DataFrame
     df = pd.concat([df, pd.DataFrame(novas_linhas)], ignore_index=True)
-    
+
     return df
 
-# Função para realizar a análise de Pareto
+
+def excluir_erro(df):
+    # Solicita ao usuário o erro a ser excluído
+    erro_a_excluir = input("Digite o nome do erro a ser excluído: ")
+
+    # Verifica se o erro existe no DataFrame
+    if erro_a_excluir not in df['Erro'].to_list():
+        print("Erro não encontrado. Digite novamente.")
+
+        # Solicita novamente o nome do erro
+        erro_a_excluir = input("Digite o nome do erro a ser excluído: ")
+
+    # Remove o erro do DataFrame
+    df = df[df['Erro'] != erro_a_excluir]
+
+    return df
+
+
+def alterar_erro(df):
+    # Solicita ao usuário o erro a ser alterado
+    erro_a_alterar = input("Digite o nome do erro a ser alterado: ")
+
+    # Solicita ao usuário as novas informações do erro
+    novo_nome = input("Digite o novo nome do erro: ")
+    try:
+        nova_quantidade = int(input("Digite a nova quantidade do erro: "))
+    except ValueError:
+        # Se a conversão falhar, imprime uma mensagem de erro
+        print("Quantidade inválida. Digite um número inteiro.")
+        return alterar_erro(df)
+
+    # Verifica se o erro existe no DataFrame
+    if erro_a_alterar not in df['Erro'].to_list():
+        print("Erro não encontrado. Digite novamente.")
+        return alterar_erro(df)
+
+    # Altera as informações do erro no DataFrame
+    df = df[df['Erro'] != erro_a_alterar]
+
+    erro = novo_nome
+    quantidade = nova_quantidade
+
+    # Adiciona o erro à lista de novas linhas
+    novas_linhas = []
+    for _ in range(quantidade):
+        nova_linha = {'Erro': erro, 'Quantidade': 1}
+        novas_linhas.append(nova_linha)
+
+    # Concatena a lista de novas linhas ao DataFrame
+    df = pd.concat([df, pd.DataFrame(novas_linhas)], ignore_index=True)
+
+    return df
+
+
+def print_erros(df):
+    # Ordena o DataFrame pelo número de ocorrências
+    df = df.sort_values(by='Quantidade', ascending=False)
+
+    # Soma a quantidade de erros por nome
+    quantidades = df.groupby('Erro')['Quantidade'].sum()
+
+    # Print dos nomes dos erros e suas respectivas quantidades
+    for erro, quantidade in quantidades.items():
+        print(f'\n{erro}: {quantidade}')
+
+
+def salvar_banco_de_dados(df, nome_banco_de_dados):
+    # Obtém a data e hora atuais
+    agora = datetime.datetime.now()
+
+    # Cria o nome do novo arquivo
+    nome_arquivo = f"{nome_banco_de_dados}_{agora.strftime('%d_%m_%Y_%H_%M_%S')}.xlsx"
+
+    # Salva o banco de dados no novo arquivo
+    df.to_excel(nome_arquivo, index=False)
+
+    return nome_arquivo
+
+
+''' CORRIGIR ESTA FUNÇÃO
+def verificar_banco_de_dados(df):
+    # Verifique se o banco de dados foi informado
+    if df is None:
+        # Solicite ao usuário o caminho do banco de dados
+        caminho_banco_de_dados = input("Digite o caminho do banco de dados: ")
+        # Verifica se o caminho é válido
+        if not os.path.exists(caminho_banco_de_dados):
+            print("Caminho inválido. Digite novamente.")
+            return escolher_caminho_banco_de_dados()
+
+        # Verifica se o arquivo é um arquivo Excel
+        if not caminho_banco_de_dados.endswith(".xlsx"):
+            print("Arquivo inválido. O arquivo deve ser um arquivo Excel.")
+            return escolher_caminho_banco_de_dados()
+
+        # Carrega o banco de dados  
+        df = pd.read_excel(caminho_banco_de_dados)
+        
+        # Verifica se o banco de dados está vazio
+        if df.empty:
+            print("Banco de dados vazio.")
+            return None
+
+    return df
+    '''
+
+
 def analise_pareto(df):
     # Separar grupo por grupo de Erros/TítuloColuna
     grupos = df.groupby('Erro')
@@ -81,29 +215,56 @@ def analise_pareto(df):
     # Apresenta a Análise de Pareto
     plt.show()
     print(contagem_individual[['Erro', 'Quantidade',
-      'Frequência(%)', 'Frequência Acumulada(%)']])
+                               'Frequência(%)', 'Frequência Acumulada(%)']])
+
 
 # Leia o DataFrame
-df = pd.read_excel('C:/Users/Ryzen/Documents/GitHub/FATEC-EST/BD_erros.xlsx')
 
+df = None
 # Menu
 while True:
-    print("\nMenu:")
-    print("1. Adicionar um novo erro")
-    print("2. Exibir análise de Pareto")
-    print("3. Sair e salvar Banco de Dados.")
-    
-    escolha = input("Escolha uma opção: ")
-    
+    print('\n-------------------- Menu --------------------')
+    print('[1] Escolher banco de dados')
+    print('[2] Exibir banco de dados')
+    print('[3] Adicionar um novo erro')
+    print('[4] Alterar um erro existente no Banco de Dados')
+    print('[5] Excluir um erro existente no Banco de Dados')
+    print('[6] Exibir análise de Pareto')
+    print('[7] Salvar Banco de Dados.')
+    print('[8] Sair')
+
+    escolha = input("\nEscolha uma opção: ")
+
     if escolha == '1':
-        df = adicionar_erro(df)
+        caminho_banco_de_dados = escolher_caminho_banco_de_dados()
+        df = pd.read_excel(caminho_banco_de_dados)
+        print_erros(df)
+
     elif escolha == '2':
-        analise_pareto(df)  # Chamada da função para análise de Pareto
+        verificar_banco_de_dados(df)
+        print_erros(df)
+
     elif escolha == '3':
-        # Salve o DataFrame atualizado e saia do programa
-        df.to_excel('C:/Users/Ryzen/Documents/GitHub/FATEC-EST/BD_erros.xlsx', index=False)
+        df = adicionar_erro(df)
+        print_erros(df)
+    elif escolha == '4':
+        df = alterar_erro(df)
+        print_erros(df)
+
+    elif escolha == '5':
+        df = excluir_erro(df)
+        print_erros(df)
+
+    elif escolha == '6':
+        analise_pareto(df)
+    elif escolha == '7':
+        print('\nBanco de dados salvo com sucesso!')
+        caminho_arquivo = salvar_banco_de_dados(df, 'BD_erros')
+        print(caminho_arquivo)
+    elif escolha == '8':
+        print("\nFinalizando aplicação...")
         break
     else:
         print("Opção inválida. Por favor, escolha uma opção válida.")
 
-print("Programa encerrado.")
+print("Programa encerrado.\n")
